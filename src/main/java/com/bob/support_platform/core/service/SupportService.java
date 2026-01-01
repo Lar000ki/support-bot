@@ -30,5 +30,16 @@ public class SupportService {
 
         return ticket;
     }
-}
 
+    public Ticket getTicket(Long id) {
+        return ticketService.getTicket(id);
+    }
+
+    public Ticket getTicketWithUser(Long id) {
+        return ticketService.getTicketWithUser(id);
+    }
+
+    public void onAgentReply(Ticket ticket) {
+        ticketService.onAgentReply(ticket);
+    }
+}

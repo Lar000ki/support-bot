@@ -26,6 +26,9 @@ public class SupportProperties {
         private int limitTime = 10;
         private int limitAmountmsg = 10;
         private int limitRestrictTime = 10;
+        private boolean greetingEnabled = true;
+        private boolean headerEnabled = true;
+        private boolean footerEnabled = true;
     }
 }
 

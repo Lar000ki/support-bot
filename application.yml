@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: support-platform
+  datasource:
+    username: postgres
+    password: ""
+    #postgresql
+    url: jdbc:postgresql://localhost:5432/support
+    driver-class-name: org.postgresql.Driver
+    #mysql
+    # url: jdbc:mysql://localhost:3306/support
+    # driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+server:
+  port: 8080
+support:
+  web:
+    enabled: true
+    admin:
+      username: admin
+      password: admin
+  tickets:
+    auto-close-on-reply: false
+  messages:
+    max-length: 2000
+    limit-time: 10
+    limit-amountmsg: 10
+    limit-restrict-time: 10
+
+    greeting-enabled: true
+    # TG NOT WORK IF MSG HAVE ATTACHMENTS
+    header-enabled: true
+    footer-enabled: true
+
+  platforms:
+    telegram:
+      enabled: true
+      token: ""
+      support-chat-id:
+    discord:
+      enabled: false
+      token: ""
+      support-chat-id:
+
+  texts:
+    error: "Something went wrong. Please try again later."
+    rate-limit: "You are sending messages too fast."
+
+    greeting: "Hello! Our support team will reply shortly."
+    header: "[Support]"
+    footer: "Thank you for contacting support!"
+
+    newmsg: "New support message"
+    ticket: "тикет"
+
+    start: "Welcome to support! Send your message and our agents will assist you."

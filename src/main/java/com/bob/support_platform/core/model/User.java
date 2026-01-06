@@ -25,7 +25,7 @@ public class User {
     private PlatformType platform;
 
     @Column(name = "external_id", nullable = false)
-    private String externalId;
+    private long externalId;
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();

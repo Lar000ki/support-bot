@@ -13,5 +13,6 @@ public class TelegramProperties {
 
     private boolean enabled;
     private String token;
+    private String username = "SupportBot";
     private long supportChatId;
 }

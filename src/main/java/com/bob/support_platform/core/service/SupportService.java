@@ -17,7 +17,7 @@ public class SupportService {
 
     public Ticket onUserMessage(
             PlatformType platform,
-            String externalUserId
+            long externalUserId
     ) {
         User user = userService.getOrCreate(platform, externalUserId);
 
@@ -26,8 +26,6 @@ public class SupportService {
         }
 
         Ticket ticket = ticketService.getOrCreateOpenTicket(user);
-        ticketService.touch(ticket);
-
         return ticket;
     }
 

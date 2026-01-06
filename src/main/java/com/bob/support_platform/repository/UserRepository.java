@@ -11,6 +11,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByPlatformAndExternalId(
             PlatformType platform,
-            String externalId
+            long externalId
     );
 }

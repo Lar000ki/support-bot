@@ -45,7 +45,7 @@ public class TelegramUpdateHandler {
     //юзер -> саппорт
     private void handleUserMessage(Message message, TelegramLongPollingBot bot) {
 
-        String externalUserId = message.getFrom().getId().toString();
+        Long externalUserId = message.getFrom().getId();
 
         Ticket ticket;
         try {
@@ -54,83 +54,52 @@ public class TelegramUpdateHandler {
                     externalUserId
             );
         } catch (RateLimitExceededException e) {
-            sender.sendText(
-                    bot,
-                    message.getChatId(),
-                    textService.get("rate-limit")
-            );
+            sender.sendText(bot, message.getChatId(), textService.get("rate-limit"));
             return;
         }
 
-        //greeting
-        if (ticket.getCreatedAt().equals(ticket.getLastActivityAt()) && supportProperties.getMessages().isGreetingEnabled()) {
-            sender.sendText(
-                    bot,
-                    message.getChatId(),
-                    textService.get("greeting")
-            );
+        // greeting
+        if (ticket.getCreatedAt().equals(ticket.getLastActivityAt())
+                && supportProperties.getMessages().isGreetingEnabled()) {
+            sender.sendText(bot, message.getChatId(), textService.get("greeting"));
         }
-        sender.sendServiceMessage(
-                bot,
-                ticket.getId(),
-                externalUserId
-        );
 
-        sender.copyMessage(
-                bot,
-                message.getChatId(),
-                tgProperties.getSupportChatId(),
-                message.getMessageId()
-        );
+        // 🔹 гибрид user -> support
+        if (canRebuildTextMessage(message)) {
+            String text = buildSupportText(message.getText(), ticket.getId());
+
+            sender.sendText(bot, tgProperties.getSupportChatId(), text);
+
+        } else {
+            String text = buildSupportText("", ticket.getId());
+
+            sender.sendText(bot, tgProperties.getSupportChatId(), text);
+            sender.copyMessage(bot, message.getChatId(), tgProperties.getSupportChatId(), message.getMessageId());
+        }
     }
+
 
     //саппорт -> юзер
     private void handleAdminReply(Message message, TelegramLongPollingBot bot) {
-        /*
-        СДЕЛАТЬ ГИБРИД
-        Если сообщение можно пересоздать безопасно - добавляем хедер футер
-        иначе copyMessage
-        +добавить проверку что сообщение от бота и более строгую валидацию (защита от неслужебного мсг) - extractTicketId
-         */
+
+        if (!isValidAdminReply(message)) {
+            return;
+        }
 
         Message replied = message.getReplyToMessage();
-        if (replied == null || replied.getText() == null) return;
-
         Long ticketId = extractTicketId(replied.getText());
-        if (ticketId == null) return;
-
+        if (ticketId == null) {
+            log.debug("ticketId not found");
+            return;
+        }
         Ticket ticket = supportService.getTicketWithUser(ticketId);
-        if (ticket == null) return;
-
-        Long userChatId = Long.parseLong(ticket.getUser().getExternalId());
-
-        boolean hasAttachments =
-                message.hasPhoto()
-                        || message.hasDocument()
-                        || message.hasVideo()
-                        || message.hasVoice()
-                        || message.hasAudio()
-                        || message.hasSticker();
-
-        //онли текст
-        if (message.hasText() && !hasAttachments) {
-
-            String text = message.getText();
-
-            if (supportProperties.getMessages().isHeaderEnabled()) {
-                text = textService.get("header") + "\n" + text;
-            }
-
-            if (supportProperties.getMessages().isFooterEnabled()) {
-                text = text + "\n" + textService.get("footer");
-            }
-
-            sender.sendText(
-                    bot,
-                    userChatId,
-                    text
-            );
-
+        if (ticket == null || !ticket.isOpen()) {
+            log.debug("ticket not found or closed");
+            return;
+        }
+        long userChatId = ticket.getUser().getExternalId();
+        if (canRebuildTextMessage(message)) {
+            sendFormattedTextReply(bot, userChatId, message.getText());
         } else {
             sender.copyMessage(
                     bot,
@@ -139,9 +108,47 @@ public class TelegramUpdateHandler {
                     message.getMessageId()
             );
         }
-
         supportService.onAgentReply(ticket);
     }
+
+
+    private boolean isValidAdminReply(Message message) {
+        return message.isReply()
+                && message.getChatId().equals(tgProperties.getSupportChatId())
+                && message.getReplyToMessage() != null
+                && message.getReplyToMessage().getFrom() != null
+                && Boolean.TRUE.equals(message.getReplyToMessage().getFrom().getIsBot())
+                && message.getReplyToMessage().hasText();
+    }
+
+    private boolean canRebuildTextMessage(Message message) {
+        return message.hasText()
+                && !message.hasPhoto()
+                && !message.hasDocument()
+                && !message.hasVideo()
+                && !message.hasVoice()
+                && !message.hasAudio()
+                && !message.hasSticker();
+    }
+
+    private void sendFormattedTextReply(
+            TelegramLongPollingBot bot,
+            long userChatId,
+            String originalText
+    ) {
+        String text = originalText;
+
+        if (supportProperties.getMessages().isHeaderEnabled()) {
+            text = textService.get("header") + "\n" + text;
+        }
+
+        if (supportProperties.getMessages().isFooterEnabled()) {
+            text = text + "\n" + textService.get("footer");
+        }
+
+        sender.sendText(bot, userChatId, text);
+    }
+
 
     private boolean isAdminReply(Message message) {
         return message.isReply()
@@ -149,13 +156,23 @@ public class TelegramUpdateHandler {
     }
 
     private Long extractTicketId(String text) {
-        Pattern pattern = Pattern.compile("Ticket:\\s*#(\\d+)");
+        Pattern pattern = Pattern.compile(textService.get("ticket") + ":\\s*#(\\d+)");
         Matcher matcher = pattern.matcher(text);
         if (matcher.find()) {
             return Long.parseLong(matcher.group(1));
         }
         return null;
     }
+
+    private String buildSupportText(String originalText, long ticketId) {
+        return """
+        %s
+        %s: #%d
+
+        %s
+        """.formatted(textService.get("newmsg"), textService.get("ticket"), ticketId, originalText);
+    }
+
 }
 
 

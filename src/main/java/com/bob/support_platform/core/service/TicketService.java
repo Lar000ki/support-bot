@@ -19,6 +19,8 @@ public class TicketService {
 
     public Ticket getOrCreateOpenTicket(User user) {
 
+        Instant now = Instant.now();
+
         return ticketRepository
                 .findFirstByUserAndStatusOrderByCreatedAtDesc(
                         user,
@@ -28,11 +30,12 @@ public class TicketService {
                     Ticket ticket = new Ticket();
                     ticket.setUser(user);
                     ticket.setStatus(TicketStatus.OPEN);
-                    ticket.setCreatedAt(Instant.now());
-                    ticket.setLastActivityAt(Instant.now());
+                    ticket.setCreatedAt(now);
+                    ticket.setLastActivityAt(now);
                     return ticketRepository.save(ticket);
                 });
     }
+
 
     public void touch(Ticket ticket) {
         ticket.setLastActivityAt(Instant.now());

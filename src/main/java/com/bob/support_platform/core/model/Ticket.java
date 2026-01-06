@@ -27,5 +27,10 @@ public class Ticket {
     private Instant createdAt = Instant.now();
 
     private Instant lastActivityAt;
+
+    public boolean isOpen() {
+        return status == TicketStatus.OPEN;
+    }
+
 }
 

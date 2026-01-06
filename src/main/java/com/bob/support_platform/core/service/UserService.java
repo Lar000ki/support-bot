@@ -14,7 +14,7 @@ public class UserService {
 
     public User getOrCreate(
             PlatformType platform,
-            String externalUserId
+            long externalUserId
     ) {
         return userRepository
                 .findByPlatformAndExternalId(platform, externalUserId)

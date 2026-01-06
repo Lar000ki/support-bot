@@ -15,42 +15,15 @@ import java.io.Serializable;
 @RequiredArgsConstructor
 public class TelegramSender {
 
-    private final TelegramProperties tgProperties;
-
-    public void sendServiceMessage(
-            TelegramLongPollingBot bot,
-            Long ticketId,
-            String externalUserId
-    ) {
+    public void sendText(TelegramLongPollingBot bot, long externalUserId, String text) {
         SendMessage msg = new SendMessage();
-        msg.setChatId(tgProperties.getSupportChatId());
-        msg.setText("""
-            New support message
-            Ticket: #%d
-            User ID: %s
-            """.formatted(ticketId, externalUserId));
-
-        execute(bot, msg);
-    }
-
-    public void sendText(
-            TelegramLongPollingBot bot,
-            Long chatId,
-            String text
-    ) {
-        SendMessage msg = new SendMessage();
-        msg.setChatId(chatId);
+        msg.setChatId(externalUserId);
         msg.setText(text);
 
         execute(bot, msg);
     }
 
-    public void copyMessage(
-            TelegramLongPollingBot bot,
-            Long fromChat,
-            Long toChat,
-            Integer messageId
-    ) {
+    public void copyMessage(TelegramLongPollingBot bot, long fromChat, long toChat, Integer messageId) {
         CopyMessage copy = new CopyMessage();
         copy.setFromChatId(fromChat);
         copy.setChatId(toChat);

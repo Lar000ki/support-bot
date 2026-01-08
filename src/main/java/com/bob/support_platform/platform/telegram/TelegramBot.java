@@ -18,9 +18,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @PostConstruct
     public void init() {
-        log.info("TG BOT enabled={}, token={}",
-                tgProperties.isEnabled(),
-                tgProperties.getToken() != null
+        log.info("TG BOT enabled={}",
+                tgProperties.isEnabled()
         );
     }
 

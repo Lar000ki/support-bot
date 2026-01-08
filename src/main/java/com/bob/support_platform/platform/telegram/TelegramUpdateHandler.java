@@ -6,6 +6,7 @@ import com.bob.support_platform.core.model.Ticket;
 import com.bob.support_platform.core.service.RateLimitExceededException;
 import com.bob.support_platform.core.service.SupportService;
 import com.bob.support_platform.core.service.TextService;
+import com.bob.support_platform.core.service.UserBannedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,18 +28,22 @@ public class TelegramUpdateHandler {
     private final TelegramProperties tgProperties;
     private final SupportProperties supportProperties;
     private final TextService textService;
+    private final TelegramCommandHandler commandHandler;
+
 
     public void handle(Update update, TelegramLongPollingBot bot) {
         if (!update.hasMessage()) return;
 
         Message message = update.getMessage();
+        if (commandHandler.handle(message, bot)) {
+            return;
+        }
         if (isAdminReply(message)) {
             handleAdminReply(message, bot);
             return;
         }
         if (message.isUserMessage()) {
             handleUserMessage(message, bot);
-            return;
         }
     }
 
@@ -56,22 +61,24 @@ public class TelegramUpdateHandler {
         } catch (RateLimitExceededException e) {
             sender.sendText(bot, message.getChatId(), textService.get("rate-limit"));
             return;
+        } catch (UserBannedException e) {
+            return;
         }
 
         // greeting
         if (ticket.getCreatedAt().equals(ticket.getLastActivityAt())
                 && supportProperties.getMessages().isGreetingEnabled()) {
+            supportService.touchTicket(ticket);
             sender.sendText(bot, message.getChatId(), textService.get("greeting"));
         }
 
-        // 🔹 гибрид user -> support
         if (canRebuildTextMessage(message)) {
-            String text = buildSupportText(message.getText(), ticket.getId());
+            String text = buildSupportText(message.getText(), ticket.getId(), message.getFrom().getId());
 
             sender.sendText(bot, tgProperties.getSupportChatId(), text);
 
         } else {
-            String text = buildSupportText("", ticket.getId());
+            String text = buildSupportText("", ticket.getId(), message.getFrom().getId());
 
             sender.sendText(bot, tgProperties.getSupportChatId(), text);
             sender.copyMessage(bot, message.getChatId(), tgProperties.getSupportChatId(), message.getMessageId());
@@ -164,13 +171,14 @@ public class TelegramUpdateHandler {
         return null;
     }
 
-    private String buildSupportText(String originalText, long ticketId) {
+    private String buildSupportText(String originalText, long ticketId, long externalUserId) {
         return """
         %s
         %s: #%d
+        user id: %d
 
         %s
-        """.formatted(textService.get("newmsg"), textService.get("ticket"), ticketId, originalText);
+        """.formatted(textService.get("newmsg"), textService.get("ticket"), ticketId, externalUserId, originalText);
     }
 
 }

@@ -29,5 +29,7 @@ public class User {
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    private boolean banned = false;
 }
 

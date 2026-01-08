@@ -21,6 +21,10 @@ public class SupportService {
     ) {
         User user = userService.getOrCreate(platform, externalUserId);
 
+        if (user.isBanned()) {
+            throw new UserBannedException();
+        }
+
         if (!rateLimitService.isAllowed(user.getId())) {
             throw new RateLimitExceededException();
         }
@@ -31,6 +35,10 @@ public class SupportService {
 
     public Ticket getTicket(Long id) {
         return ticketService.getTicket(id);
+    }
+
+    public void touchTicket(Ticket ticket){
+        ticketService.touch(ticket);
     }
 
     public Ticket getTicketWithUser(Long id) {

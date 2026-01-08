@@ -25,5 +25,12 @@ public class UserService {
                     return userRepository.save(user);
                 });
     }
+    public void setBanned(PlatformType platform, long externalId, boolean banned) {
+        userRepository.findByPlatformAndExternalId(platform, externalId)
+                .ifPresent(user -> {
+                    user.setBanned(banned);
+                    userRepository.save(user);
+                });
+    }
 }
 

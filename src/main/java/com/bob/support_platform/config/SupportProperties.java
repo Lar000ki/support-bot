@@ -11,6 +11,7 @@ public class SupportProperties {
 
     private Tickets tickets = new Tickets();
     private Messages messages = new Messages();
+    private Web web = new Web();
 
     //fallback значения чтобы не было NPE
     @Getter
@@ -29,6 +30,20 @@ public class SupportProperties {
         private boolean greetingEnabled = true;
         private boolean headerEnabled = true;
         private boolean footerEnabled = true;
+    }
+
+    @Getter
+    @Setter
+    public static class Web {
+        private boolean enabled = true;
+        private Admin admin = new Admin();
+
+        @Getter
+        @Setter
+        public static class Admin {
+            private String username = "admin";
+            private String password = "admin";
+        }
     }
 }
 

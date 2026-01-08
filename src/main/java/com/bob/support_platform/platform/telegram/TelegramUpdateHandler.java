@@ -1,12 +1,15 @@
 package com.bob.support_platform.platform.telegram;
 
-import com.bob.support_platform.config.SupportProperties;
-import com.bob.support_platform.core.model.PlatformType;
-import com.bob.support_platform.core.model.Ticket;
-import com.bob.support_platform.core.service.RateLimitExceededException;
-import com.bob.support_platform.core.service.SupportService;
-import com.bob.support_platform.core.service.TextService;
-import com.bob.support_platform.core.service.UserBannedException;
+
+import com.bob.support_platform.core.CoreCommandProcessor;
+import com.bob.support_platform.core.CoreSupportProcessor;
+import com.bob.support_platform.core.dto.AdminReplyContext;
+import com.bob.support_platform.core.dto.CoreCommand;
+import com.bob.support_platform.core.interfaces.CoreResponse;
+import com.bob.support_platform.core.interfaces.PlatformMessage;
+
+import com.bob.support_platform.platform.telegram.adapter.TelegramCommandAdapter;
+import com.bob.support_platform.platform.telegram.adapter.TelegramMessageAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,164 +26,103 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class TelegramUpdateHandler {
 
-    private final SupportService supportService;
+    private final TelegramMessageAdapter messageAdapter;
+    private final TelegramCommandAdapter commandAdapter;
+
+    private final CoreSupportProcessor supportProcessor;
+    private final CoreCommandProcessor commandProcessor;
+
     private final TelegramSender sender;
     private final TelegramProperties tgProperties;
-    private final SupportProperties supportProperties;
-    private final TextService textService;
-    private final TelegramCommandHandler commandHandler;
-
 
     public void handle(Update update, TelegramLongPollingBot bot) {
+
         if (!update.hasMessage()) return;
 
         Message message = update.getMessage();
-        if (commandHandler.handle(message, bot)) {
+
+        //admin commands
+        if (isAdminCommand(message)) {
+            CoreCommand cmd = commandAdapter.adapt(message);
+            commandProcessor.handle(cmd)
+                    .forEach(r -> apply(r, bot));
             return;
         }
+
+        //admin -> user
         if (isAdminReply(message)) {
-            handleAdminReply(message, bot);
+
+            Long ticketId = extractTicketId(message);
+            if (ticketId == null) return;
+
+            PlatformMessage adminMsg = messageAdapter.adapt(message);
+
+            AdminReplyContext ctx =
+                    new AdminReplyContext(adminMsg, ticketId);
+
+            supportProcessor.handleAdminReply(ctx)
+                    .forEach(r -> apply(r, bot));
+
             return;
         }
+
+
+        //user -> support
         if (message.isUserMessage()) {
-            handleUserMessage(message, bot);
+            PlatformMessage msg = messageAdapter.adapt(message);
+            supportProcessor.handleUserMessage(msg)
+                    .forEach(r -> apply(r, bot));
         }
     }
 
-    //юзер -> саппорт
-    private void handleUserMessage(Message message, TelegramLongPollingBot bot) {
-
-        Long externalUserId = message.getFrom().getId();
-
-        Ticket ticket;
-        try {
-            ticket = supportService.onUserMessage(
-                    PlatformType.TELEGRAM,
-                    externalUserId
-            );
-        } catch (RateLimitExceededException e) {
-            sender.sendText(bot, message.getChatId(), textService.get("rate-limit"));
-            return;
-        } catch (UserBannedException e) {
-            return;
-        }
-
-        // greeting
-        if (ticket.getCreatedAt().equals(ticket.getLastActivityAt())
-                && supportProperties.getMessages().isGreetingEnabled()) {
-            supportService.touchTicket(ticket);
-            sender.sendText(bot, message.getChatId(), textService.get("greeting"));
-        }
-
-        if (canRebuildTextMessage(message)) {
-            String text = buildSupportText(message.getText(), ticket.getId(), message.getFrom().getId());
-
-            sender.sendText(bot, tgProperties.getSupportChatId(), text);
-
-        } else {
-            String text = buildSupportText("", ticket.getId(), message.getFrom().getId());
-
-            sender.sendText(bot, tgProperties.getSupportChatId(), text);
-            sender.copyMessage(bot, message.getChatId(), tgProperties.getSupportChatId(), message.getMessageId());
-        }
-    }
-
-
-    //саппорт -> юзер
-    private void handleAdminReply(Message message, TelegramLongPollingBot bot) {
-
-        if (!isValidAdminReply(message)) {
-            return;
-        }
-
-        Message replied = message.getReplyToMessage();
-        Long ticketId = extractTicketId(replied.getText());
-        if (ticketId == null) {
-            log.debug("ticketId not found");
-            return;
-        }
-        Ticket ticket = supportService.getTicketWithUser(ticketId);
-        if (ticket == null || !ticket.isOpen()) {
-            log.debug("ticket not found or closed");
-            return;
-        }
-        long userChatId = ticket.getUser().getExternalId();
-        if (canRebuildTextMessage(message)) {
-            sendFormattedTextReply(bot, userChatId, message.getText());
-        } else {
-            sender.copyMessage(
-                    bot,
-                    message.getChatId(),
-                    userChatId,
-                    message.getMessageId()
-            );
-        }
-        supportService.onAgentReply(ticket);
-    }
-
-
-    private boolean isValidAdminReply(Message message) {
-        return message.isReply()
-                && message.getChatId().equals(tgProperties.getSupportChatId())
-                && message.getReplyToMessage() != null
-                && message.getReplyToMessage().getFrom() != null
-                && Boolean.TRUE.equals(message.getReplyToMessage().getFrom().getIsBot())
-                && message.getReplyToMessage().hasText();
-    }
-
-    private boolean canRebuildTextMessage(Message message) {
+    private boolean isAdminCommand(Message message) {
         return message.hasText()
-                && !message.hasPhoto()
-                && !message.hasDocument()
-                && !message.hasVideo()
-                && !message.hasVoice()
-                && !message.hasAudio()
-                && !message.hasSticker();
-    }
-
-    private void sendFormattedTextReply(
-            TelegramLongPollingBot bot,
-            long userChatId,
-            String originalText
-    ) {
-        String text = originalText;
-
-        if (supportProperties.getMessages().isHeaderEnabled()) {
-            text = textService.get("header") + "\n" + text;
-        }
-
-        if (supportProperties.getMessages().isFooterEnabled()) {
-            text = text + "\n" + textService.get("footer");
-        }
-
-        sender.sendText(bot, userChatId, text);
-    }
-
-
-    private boolean isAdminReply(Message message) {
-        return message.isReply()
+                && message.getText().startsWith("/")
                 && message.getChatId().equals(tgProperties.getSupportChatId());
     }
 
-    private Long extractTicketId(String text) {
-        Pattern pattern = Pattern.compile(textService.get("ticket") + ":\\s*#(\\d+)");
-        Matcher matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            return Long.parseLong(matcher.group(1));
-        }
-        return null;
+    private boolean isAdminReply(Message message) {
+        return message.isReply()
+                && message.getChatId().equals(tgProperties.getSupportChatId())
+                && message.getReplyToMessage() != null
+                && Boolean.TRUE.equals(
+                message.getReplyToMessage().getFrom().getIsBot()
+        );
     }
 
-    private String buildSupportText(String originalText, long ticketId, long externalUserId) {
-        return """
-        %s
-        %s: #%d
-        user id: %d
 
-        %s
-        """.formatted(textService.get("newmsg"), textService.get("ticket"), ticketId, externalUserId, originalText);
+    private void apply(CoreResponse response, TelegramLongPollingBot bot) {
+
+        switch (response) {
+
+            case CoreResponse.SendText r ->
+                    sender.sendText(bot, r.chatId(), r.text());
+
+            case CoreResponse.CopyMessage r -> {
+                Message original = (Message) r.nativeMsg();
+                sender.copyMessage(
+                        bot,
+                        r.from(),
+                        r.to(),
+                        original.getMessageId()
+                );
+            }
+
+            case CoreResponse.Ignore r -> {}
+        }
+    }
+
+    private Long extractTicketId(Message message) {
+        if (message.getReplyToMessage() == null) return null;
+        String text = message.getReplyToMessage().getText();
+        if (text == null) return null;
+
+        Pattern p = Pattern.compile(":\\s*#(\\d+)");
+        Matcher m = p.matcher(text);
+        return m.find() ? Long.parseLong(m.group(1)) : null;
     }
 
 }
+
 
 

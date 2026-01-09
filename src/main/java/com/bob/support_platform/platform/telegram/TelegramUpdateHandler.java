@@ -8,6 +8,7 @@ import com.bob.support_platform.core.dto.CoreCommand;
 import com.bob.support_platform.core.interfaces.CoreResponse;
 import com.bob.support_platform.core.interfaces.PlatformMessage;
 
+import com.bob.support_platform.core.model.CommandScope;
 import com.bob.support_platform.platform.telegram.adapter.TelegramCommandAdapter;
 import com.bob.support_platform.platform.telegram.adapter.TelegramMessageAdapter;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,13 +43,18 @@ public class TelegramUpdateHandler {
 
         Message message = update.getMessage();
 
-        //admin commands
-        if (isAdminCommand(message)) {
-            CoreCommand cmd = commandAdapter.adapt(message);
+        // commands
+        Optional<CoreCommand> cmdOpt = commandAdapter.adapt(message);
+        if (cmdOpt.isPresent()) {
+            CoreCommand cmd = cmdOpt.get();
+            if (cmd.type().getScope() == CommandScope.ADMIN && !isAdminContext(message)) {
+                return;
+            }
             commandProcessor.handle(cmd)
                     .forEach(r -> apply(r, bot));
             return;
         }
+
 
         //admin -> user
         if (isAdminReply(message)) {
@@ -122,6 +129,9 @@ public class TelegramUpdateHandler {
         return m.find() ? Long.parseLong(m.group(1)) : null;
     }
 
+    private boolean isAdminContext(Message message) {
+        return message.getChatId().equals(tgProperties.getSupportChatId());
+    }
 }
 
 

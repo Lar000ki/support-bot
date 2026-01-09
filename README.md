@@ -85,6 +85,7 @@ java -jar target/support-platform-<current version>.jar
 │       │               │   │   ├── CoreResponse.java
 │       │               │   │   └── PlatformMessage.java
 │       │               │   ├── model
+│       │               │   │   ├── CommandScope.java
 │       │               │   │   ├── PlatformType.java
 │       │               │   │   ├── Ticket.java
 │       │               │   │   ├── TicketStatus.java
@@ -98,6 +99,7 @@ java -jar target/support-platform-<current version>.jar
 │       │               │   │   ├── UserBannedException.java
 │       │               │   │   └── UserService.java
 │       │               │   ├── CoreCommandProcessor.java
+│       │               │   ├── CoreCommandType.java
 │       │               │   ├── CoreSupportProcessor.java
 │       │               │   └── PlatformConfigResolver.java
 │       │               ├── platform

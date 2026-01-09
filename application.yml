@@ -32,7 +32,7 @@ support:
     footer-enabled: true
   platforms:
     telegram:
-      enabled: true
+      enabled: false
       token: ""
       support-chat-id: 1
     discord:
@@ -48,7 +48,6 @@ support:
     newmsg: "New support message"
     ticket: "Ticket"
     start: "Welcome to support! Send your message and our agents will assist you."
-    unknown-command: "Unknown command"
     user: "user"
     user-id: "user id"
     banned: "banned"

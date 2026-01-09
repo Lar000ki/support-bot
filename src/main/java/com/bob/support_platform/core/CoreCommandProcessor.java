@@ -18,17 +18,15 @@ public class CoreCommandProcessor {
 
     public List<CoreResponse> handle(CoreCommand cmd) {
 
-        return switch (cmd.name()) {
-            case "ban" -> handleBan(cmd);
-            case "unban" -> handleUnban(cmd);
+        return switch (cmd.type()) {
 
-            default -> List.of(
-                    new CoreResponse.SendText(
-                            cmd.adminId(),
-                            textService.get("unknown-command")
-                    )
-            );
+            case START -> handleStart(cmd);
+            case BAN -> handleBan(cmd);
+            case UNBAN -> handleUnban(cmd);
         };
+    }
+    private List<CoreResponse> handleStart(CoreCommand cmd) {
+        return List.of(new CoreResponse.SendText(cmd.chatId(), textService.get("start")));
     }
 
     private List<CoreResponse> handleBan(CoreCommand cmd) {
@@ -45,7 +43,7 @@ public class CoreCommandProcessor {
 
         return List.of(
                 new CoreResponse.SendText(
-                        cmd.adminId(),
+                        cmd.chatId(),
                         textService.get("user") + " " + userId + " " + textService.get("banned")
                 )
         );
@@ -65,7 +63,7 @@ public class CoreCommandProcessor {
 
         return List.of(
                 new CoreResponse.SendText(
-                        cmd.adminId(),
+                        cmd.chatId(),
                         textService.get("user") + " " + userId + " " + textService.get("unbanned")
                 )
         );
@@ -73,7 +71,7 @@ public class CoreCommandProcessor {
 
     private List<CoreResponse> usage(CoreCommand cmd, String usage) {
         return List.of(
-                new CoreResponse.SendText(cmd.adminId(), textService.get("usage-command") + " " + usage)
+                new CoreResponse.SendText(cmd.chatId(), textService.get("usage-command") + " " + usage)
         );
     }
 

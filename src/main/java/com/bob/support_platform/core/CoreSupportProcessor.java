@@ -28,6 +28,17 @@ public class CoreSupportProcessor {
 
         List<CoreResponse> responses = new ArrayList<>();
 
+        // Check message length
+        int maxLength = supportProperties.getMessages().getMaxLength();
+        if (msg.text() != null && msg.text().length() > maxLength) {
+            return List.of(
+                    new CoreResponse.SendText(
+                            msg.chatId(),
+                            textService.get("message-too-long")
+                    )
+            );
+        }
+
         Ticket ticket;
         try {
             ticket = supportService.onUserMessage(

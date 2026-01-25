@@ -24,6 +24,7 @@ The project is built according to **Hexagonal / Clean Architecture** principles:
 
 ## Features
 
+- admin commands (/help to display all)
 - support tickets (one open ticket per user)
 - message rate limit
 - ban users

@@ -47,6 +47,12 @@ public class TicketService {
         ticketRepository.save(ticket);
     }
 
+    public void reopen(Ticket ticket) {
+        ticket.setStatus(TicketStatus.OPEN);
+        ticket.setLastActivityAt(Instant.now());
+        ticketRepository.save(ticket);
+    }
+
     public Ticket getTicket(Long id) {
         return ticketRepository.findById(id).orElse(null);
     }

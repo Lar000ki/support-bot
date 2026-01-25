@@ -11,7 +11,11 @@ public enum CoreCommandType {
 
     START("start", CommandScope.USER),
     BAN("ban", CommandScope.ADMIN),
-    UNBAN("unban", CommandScope.ADMIN);
+    UNBAN("unban", CommandScope.ADMIN),
+    CLOSE("close", CommandScope.ADMIN),
+    REOPEN("reopen", CommandScope.ADMIN),
+    STATUS("status", CommandScope.ADMIN),
+    HELP("help", CommandScope.ADMIN);
 
     private final String name;
     private final CommandScope scope;

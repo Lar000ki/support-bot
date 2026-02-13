@@ -3,6 +3,7 @@ package com.bob.support_platform.core.service;
 
 import com.bob.support_platform.config.SupportProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,9 +26,12 @@ public class RateLimitService {
 
         Instant now = Instant.now();
 
-        if (restrictedUntil.containsKey(userId)
-                && restrictedUntil.get(userId).isAfter(now)) {
-            return false;
+        Instant restrictedTime = restrictedUntil.get(userId);
+        if (restrictedTime != null) {
+            if (restrictedTime.isAfter(now)) {
+                return false;
+            }
+            restrictedUntil.remove(userId);
         }
 
         userMessages.putIfAbsent(userId, new ArrayList<>());
@@ -50,6 +54,22 @@ public class RateLimitService {
 
         messages.add(now);
         return true;
+    }
+
+    @Scheduled(fixedDelay = 3600000)
+    public void cleanup() {
+        Instant now = Instant.now();
+        long windowSeconds = properties.getMessages().getLimitTime();
+
+        userMessages.entrySet().removeIf(entry -> {
+            List<Instant> msgs = entry.getValue();
+            msgs.removeIf(time -> time.isBefore(now.minusSeconds(windowSeconds)));
+            return msgs.isEmpty();
+        });
+
+        restrictedUntil.entrySet().removeIf(entry ->
+                entry.getValue().isBefore(now)
+        );
     }
 }
 

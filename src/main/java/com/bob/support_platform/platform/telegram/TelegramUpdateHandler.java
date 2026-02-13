@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class TelegramUpdateHandler {
 
+    private static final Pattern TICKET_ID_PATTERN = Pattern.compile(":\\s*#(\\d+)");
+
     private final TelegramMessageAdapter messageAdapter;
     private final TelegramCommandAdapter commandAdapter;
 
@@ -124,8 +126,7 @@ public class TelegramUpdateHandler {
         String text = message.getReplyToMessage().getText();
         if (text == null) return null;
 
-        Pattern p = Pattern.compile(":\\s*#(\\d+)");
-        Matcher m = p.matcher(text);
+        Matcher m = TICKET_ID_PATTERN.matcher(text);
         return m.find() ? Long.parseLong(m.group(1)) : null;
     }
 

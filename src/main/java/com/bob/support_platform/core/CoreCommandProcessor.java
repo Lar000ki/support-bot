@@ -50,14 +50,13 @@ public class CoreCommandProcessor {
             return usage(cmd, "/ban " + textService.get("user-id"));
         }
 
-        userService.setBanned(cmd.platform(), userId, true);
+        boolean found = userService.setBanned(cmd.platform(), userId, true);
 
-        return List.of(
-                new CoreResponse.SendText(
-                        cmd.chatId(),
-                        textService.get("user") + " " + userId + " " + textService.get("banned")
-                )
-        );
+        String text = found
+                ? textService.get("user") + " " + userId + " " + textService.get("banned")
+                : textService.get("user-not-found");
+
+        return List.of(new CoreResponse.SendText(cmd.chatId(), text));
     }
 
     private List<CoreResponse> handleUnban(CoreCommand cmd) {
@@ -70,14 +69,13 @@ public class CoreCommandProcessor {
             return usage(cmd, "/unban " + textService.get("user-id"));
         }
 
-        userService.setBanned(cmd.platform(), userId, false);
+        boolean found = userService.setBanned(cmd.platform(), userId, false);
 
-        return List.of(
-                new CoreResponse.SendText(
-                        cmd.chatId(),
-                        textService.get("user") + " " + userId + " " + textService.get("unbanned")
-                )
-        );
+        String text = found
+                ? textService.get("user") + " " + userId + " " + textService.get("unbanned")
+                : textService.get("user-not-found");
+
+        return List.of(new CoreResponse.SendText(cmd.chatId(), text));
     }
 
     private List<CoreResponse> handleClose(CoreCommand cmd) {

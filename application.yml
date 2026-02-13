@@ -52,6 +52,7 @@ support:
     user-id: "user id"
     banned: "banned"
     unbanned: "unbanned"
+    user-not-found: "User not found"
     usage-command: "Usage:"
     ticket-closed: "closed"
     ticket-not-found: "Ticket not found"
